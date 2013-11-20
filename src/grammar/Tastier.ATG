@@ -360,8 +360,9 @@ ProcDecl                        (.  string name; string label; Scope currentScop
 = "void"
   Ident<out name>               (.
                                     currentScope.Push(new Symbol(name, (int)TastierKind.Proc, (int)TastierType.Undefined, openScopes.Count, -1));
-                                    openScopes.Push(new Scope());
-                                    currentScope = openScopes.Peek();
+               			    printSymbol(new Symbol(name, (int)TastierKind.Proc, (int)TastierType.Undefined, openScopes.Count, -1));
+				    openScopes.Push(new Scope());
+               	                    currentScope = openScopes.Peek();
                                 .)
   '(' ')'
   '{'                           (.
@@ -627,16 +628,22 @@ VarDecl<bool external>          (.
   Ident<out name>               (.
                                     if (external) {
                                       externalDeclarations.Push(new Symbol(name, (int)TastierKind.Var, (int)type, 0, 0));
-                                    } else {
+                                      printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, 0, 0));
+				   } else {
                                       currentScope.Push(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, currentScope.Count(s => s.Item2 == (int)TastierKind.Var)));
-                                    }
+                                   printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, currentScope.Count(s => s.Item2 ==
+				   (int)TastierKind.Var)));
+				   }
                                 .)
   { ',' Ident<out name>         (.
                                     if (external) {
                                       externalDeclarations.Push(new Symbol(name, (int)TastierKind.Var, (int)type, 0, 0));
-                                    } else {
+                                      printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, 0, 0));	
+				 } else {
                                       currentScope.Push(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, currentScope.Count(s => s.Item2 == (int)TastierKind.Var)));
-                                    }
+                                    printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, currentScope.Count(s => s.Item2 ==
+				    (int)TastierKind.Var)));
+				    }
                                 .)
   } ';'.
 

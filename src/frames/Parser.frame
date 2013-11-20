@@ -66,6 +66,37 @@ public class Parser {
 		errDist = 0;
 	}
 
+	//Print method
+	public void printSymbol(Symbol S){
+	Console.WriteLine("Symbol Table Entry: (" + S.Item1 +", " + S.Item2+ ", "+ S.Item3+ ", "+ S.Item4 + ", " + S.Item5 + ")");
+	String item5 = null, item4 = null, item3 = null, item2 = null;
+	if(S.Item5 != -1){
+		item5 = "\nVariable Address: " + S.Item5;	
+	}
+
+	if(S.Item4 == 0){
+		item4 = "Global"; 
+	}else{
+		item4 = "In Scope\nSFP: " + S.Item4;
+	}
+	switch(S.Item3){
+		case 0: item3 = "Undefined";break;
+		case 1: item3 = "Integer";break;
+		case 2: item3 = "Boolean";break;
+	}
+	if(S.Item2 == 0){
+		item2 = "Variable";
+	}else{
+		item2 = "Procedure";
+	}
+
+	Console.WriteLine("Name:\t" + S.Item1 + "\nKind:\t" + item2 +
+			"\nType:\t" + item3 + "\nScope:\t" + item4 + item5 + "\n");
+
+	}
+
+
+
   public void Warn (string msg) {
     Console.WriteLine("-- line " + t.line + " col " + t.col + ": " + msg);
   }
