@@ -12,11 +12,10 @@ COMPILER Tastier
 
   enum TastierKind : int {  // kinds of symbol
     Var,
-    Proc
+    Proc,
+    Const
   };
 
-
-//#YOLO
 /*
   You'll notice some type aliases, such as the one just below, are commented
   out. This is because C# only allows using-alias-directives outside of a
@@ -412,10 +411,14 @@ ProcDecl                        (.  string name; string label; Scope currentScop
 
 RelOp<out Instruction inst>
 =                               (.  inst = new Instruction("", "Equ"); .)
-  ( "=="
+  ( '='
   | '<'                         (.  inst = new Instruction("", "Lss"); .)
   | '>'                         (.  inst = new Instruction("", "Gtr"); .)
-  ).
+  | ">="                         (.  inst = new Instruction("", "GtrEq"); .)
+  | "<="                         (.  inst = new Instruction("", "LssEq"); .)
+  | "!="                         (.  inst = new Instruction("", "NotEq"); .)
+
+ ).
 
 /*------------------------------------------------------------------------*/
 
@@ -444,7 +447,7 @@ Stat                            (.  TastierType type; string name; Symbol sym; b
                                       SemErr("reference to undefined variable " + name);
                                     }
                                 .)
-  ( '='                         (.
+  ( ":="                         (.
                                     if ((TastierKind)sym.Item2 != TastierKind.Var) {
                                       SemErr("cannot assign to non-variable");
                                     }
@@ -567,7 +570,9 @@ Tastier                         (.  string name; bool external = false; .)
   Ident<out name>               (.
                                     openScopes.Push(new Scope());
                                 .)
-  '{'
+ 
+ //add const part
+ '{'
   { VarDecl<external> | ProcDecl | ExternDecl }
   '}'                           (.
                                     if (openScopes.Peek().Count == 0) {
@@ -646,6 +651,13 @@ VarDecl<bool external>          (.
 				    }
                                 .)
   } ';'.
+//////////////////////////////////////////////////////////////
+
+
+
+///////////////////////////////////////////////////////////////
+
+
 
 ExternDecl                      (.  string name; bool external = true; Scope currentScope = openScopes.Peek(); int count = currentScope.Count; .)
 = "external"
