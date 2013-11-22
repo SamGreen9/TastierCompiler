@@ -3,7 +3,9 @@
 // number, the sum of all integers up to that number
 
 program Test {
+  const j := 28;
   int i;
+  int bb;
 
   void SumUp() {
     int sum;
@@ -14,6 +16,10 @@ program Test {
 
   void Main() {
     read i;
+    
+    write j;
+    bb := j + 1;
+    write bb;
     while (i > 0) {
       SumUp();
       read i;
