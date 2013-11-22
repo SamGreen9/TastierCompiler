@@ -1,36 +1,28 @@
 // This is a test program which can be compiled by the TastierCompiler.
-// It reads a sequence of numbers from the input file and computes, for each
-// number, the sum of all integers up to that number
+// It creates a constant value and several ints, writes them and also
+// tests the ability of "write" to modify multiple values.
 
 program Test {
-  const j := 28;
+  const a := 11;
   int i;
-  int bb;
-  int c;
+  int b;
+  
   void SumUp() {
     int sum;
     sum := 0;
     while (i > 0) { sum := sum + i; i := i - 1; }
-   // write sum;
+    write sum;
   }
 
   void Main() {
-//    read i;
     
-    //write j;
-    bb := j + 1;
-  //  write bb;
-    write j, bb; 
-  //  if(j >= 27){
-    //   write 99;
-   // }else{
-//	write 100;
-  //  }
-  //
-    write 444,445,446,447,448;
-    while (i > 0) {
+    b := a + 1;
+    
+    write a;
+    write b, 99, 100;
+  
+  while (i > 0) {
       SumUp();
-      read i;
     }
   }
 }
