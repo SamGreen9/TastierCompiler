@@ -6,20 +6,28 @@ program Test {
   const j := 28;
   int i;
   int bb;
-
+  int c;
   void SumUp() {
     int sum;
     sum := 0;
     while (i > 0) { sum := sum + i; i := i - 1; }
-    write sum;
+   // write sum;
   }
 
   void Main() {
-    read i;
+//    read i;
     
-    write j;
+    //write j;
     bb := j + 1;
-    write bb;
+  //  write bb;
+    write j, bb; 
+  //  if(j >= 27){
+    //   write 99;
+   // }else{
+//	write 100;
+  //  }
+  //
+    write 444,445,446,447,448;
     while (i > 0) {
       SumUp();
       read i;
