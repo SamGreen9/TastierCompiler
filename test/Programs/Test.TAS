@@ -3,27 +3,14 @@
 // tests the ability of "write" to modify multiple values.
 
 program Test {
-  const a := 11;
-  int i;
   int b;
-  
-  void SumUp() {
-    int sum;
-    sum := 0;
-    while (i > 0) { sum := sum + i; i := i - 1; }
-    write sum;
-  }
+  int c;
 
-  void Main() {
-    
-    b := a + 1;
-    
-    write a;
-    write b, 99, 100;
-  
-  while (i > 0) {
-      SumUp();
-    }
+  void Main(){
+    b := 25;
+    c := b<30?100:99;
+    write b;
+    write c;
   }
 }
 

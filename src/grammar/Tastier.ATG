@@ -472,7 +472,30 @@ Stat                            (.  TastierType type; string name; Symbol sym; b
                                       SemErr("cannot assign to non-variable");
                                     }
                                 .)
-    Expr<out type> ';'
+  Expr<out type>
+  
+  ['?'
+				(.
+				   if ((TastierType)type != TastierType.Boolean) {
+				       SemErr("boolean type expected");
+				   }
+				 openLabels.Push(generateLabel()); 
+				 program.Add(new Instruction("", "FJmp " + openLabels.Peek()));
+
+				.)
+ 
+ Expr<out type> ':'            (.
+ 				   string ternaryOpLabel = generateLabel();
+				   program.Add(new Instruction("", "Jmp " + ternaryOpLabel ));
+				   program.Add(new Instruction(openLabels.Pop(), "Nop")); 
+				.) 
+
+ Expr<out type> 		(.
+				  program.Add(new Instruction(ternaryOpLabel, "Nop"));
+
+ 				.) 
+  
+ ] ';'
                                 (.
                                     if (type != (TastierType)sym.Item3) {
                                       SemErr("incompatible types");
@@ -490,6 +513,8 @@ Stat                            (.  TastierType type; string name; Symbol sym; b
                                       program.Add(new Instruction("", "Sto " + lexicalLevelDifference + " " + sym.Item5));
                                     }
                                 .)
+ 
+ 
   | '(' ')' ';'                 (.
                                     if ((TastierKind)sym.Item2 != TastierKind.Proc) {
                                       SemErr("object is not a procedure");
@@ -538,6 +563,38 @@ Stat                            (.  TastierType type; string name; Symbol sym; b
       Stat                      (.  program.Add(new Instruction("", "Jmp " + loopStartLabel));
                                     program.Add(new Instruction(openLabels.Pop(), "Nop")); // put the loop end label here
                                 .)
+
+| "for"
+
+   '(' Stat                     (.
+				   string loopStartLabel = generateLabel();
+				   
+				   openLabels.Push(generateLabel());
+		        	   string firstIteration = generateLabel();
+				   program.Add(new Instruction("", "Jmp " + firstIteration ));
+ 
+   				   program.Add(new Instruction(loopStartLabel, "Nop"));
+				.)
+   
+  Stat   
+                                (.
+			  	  program.Add(new Instruction(firstIteration, "Nop"));
+				.)
+  
+  
+  Expr<out type>  ')' 		
+   				(.
+			         program.Add(new Instruction("", "FJmp " + openLabels.Peek())); 
+				.)
+
+   
+   "do"                        
+  Stat				(.
+				 
+				 program.Add(new Instruction("", "Jmp " + loopStartLabel ));
+				 program.Add(new Instruction(openLabels.Pop(), "Nop"));
+				.)
+
 
 | "read"
   Ident<out name> ';'           (.
