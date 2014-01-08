@@ -14,7 +14,8 @@ COMPILER Tastier
   enum TastierKind : int {  // kinds of symbol
     Var,
     Proc,
-    Const
+    Const,
+    Array
   };
 
 /*
@@ -426,10 +427,10 @@ ProcDecl                        (.  string name; string label; Scope currentScop
 /*------------------------------------------------------------------------*/
 
 RelOp<out Instruction inst>
-=                               (.  inst = new Instruction("", "Equ"); .)
+=                                (.  inst = new Instruction("", "Equ"); .)
   ( '='
-  | '<'                         (.  inst = new Instruction("", "Lss"); .)
-  | '>'                         (.  inst = new Instruction("", "Gtr"); .)
+  | '<'                          (.  inst = new Instruction("", "Lss"); .)
+  | '>'                          (.  inst = new Instruction("", "Gtr"); .)
   | ">="                         (.  inst = new Instruction("", "GtrEq"); .)
   | "<="                         (.  inst = new Instruction("", "LssEq"); .)
   | "!="                         (.  inst = new Instruction("", "NotEq"); .)
@@ -451,7 +452,7 @@ SimExpr<out TastierType type>   (.  TastierType type1; Instruction inst; .)
 
 /*------------------------------------------------------------------------*/
 
-Stat                            (.  TastierType type; string name; Symbol sym; bool external = false; bool isExternal = false; .)
+Stat                            (.  TastierType type; string name; Symbol sym; bool external = false; bool isExternal = false; Scope currentScope = openScopes.Peek(); .)
 
 = Ident<out name>               (.
                                     sym = lookup(openScopes, name);
@@ -474,7 +475,7 @@ Stat                            (.  TastierType type; string name; Symbol sym; b
                                 .)
   Expr<out type>
   
-  ['?'
+  ['?'                           //Ternary Operator
 				(.
 				   if ((TastierType)type != TastierType.Boolean) {
 				       SemErr("boolean type expected");
@@ -550,6 +551,81 @@ Stat                            (.  TastierType type; string name; Symbol sym; b
         Stat
       ]                         (.  program.Add(new Instruction(openLabels.Pop(), "Nop")); .)
 
+
+| "switch"
+  '(' Expr<out type> ')''{'        (.  
+                                    string switchBreak = generateLabel();
+                                    openLabels.Push(generateLabel());
+                                    if(type != TastierType.Integer){
+                                      SemErr("integer type expected");
+                                    }
+ 
+ 				  Symbol s1 = new Symbol("switchVar",(int)TastierKind.Var, (int)TastierType.Integer, 0, currentScope.Count(s => s.Item2 == (int)TastierKind.Var)); 	
+				   currentScope.Push(s1);
+				             
+				.)
+
+
+  "case"                      
+    '(' Expr<out type> ')' ':'  (.  
+                                    if(type != TastierType.Integer){
+                                      SemErr("integer type expected");
+                                    }
+
+				 				   
+				   program.Add(new Instruction("", "Equ"));
+                                   program.Add(new Instruction("", "FJmp " + openLabels.Peek()));
+
+                                .)
+    Stat 
+    ["break"                    (.
+                                    program.Add(new Instruction("", "Jmp " + switchBreak));
+                                .)
+    ';'
+    ]                           (. 
+                                    program.Add(new Instruction(openLabels.Pop(), "Nop"));
+                                .)               
+
+  {
+    "case"                      
+    '(' Expr<out type> ')' ':'  (.  
+                                    if(type != TastierType.Integer){
+                                      SemErr("integer type expected");
+                                    }
+
+                                    openLabels.Push(generateLabel());
+                                  sym = lookup(openScopes, "switchVar");
+				  // program.Add(new Instruction("", "StoG " + (sym.Item5+3)));
+				   program.Add(new Instruction("", "LoadG " + (sym.Item5+3)));
+				   program.Add(new Instruction("", "Equ"));
+                                    program.Add(new Instruction("", "FJmp " + openLabels.Peek()));
+                                .)
+    Stat 
+    ["break"                    (.
+                                    program.Add(new Instruction("", "Jmp " + switchBreak));
+                                .)
+    ';' 
+    ]                           (.
+                                    program.Add(new Instruction(openLabels.Pop(), "Nop"));
+                                .)
+  }
+
+
+
+  [
+    "default" ':'
+    Stat 
+    ["break"                    (.
+                                    program.Add(new Instruction("", "Jmp " + switchBreak));
+                                .)
+    ';'
+    ]                                       
+  ]  '}'                         (.
+                                    program.Add(new Instruction(switchBreak, "Nop"));
+                                .)
+
+
+
 | "while"                       (.  string loopStartLabel = generateLabel();
                                     openLabels.Push(generateLabel()); //second label is for the loop end
                                     program.Add(new Instruction(loopStartLabel, "Nop"));
@@ -564,7 +640,7 @@ Stat                            (.  TastierType type; string name; Symbol sym; b
                                     program.Add(new Instruction(openLabels.Pop(), "Nop")); // put the loop end label here
                                 .)
 
-| "for"
+| "for"                             //For Loop
 
    '(' Stat                     (.
 				   string loopStartLabel = generateLabel();
@@ -584,6 +660,10 @@ Stat                            (.  TastierType type; string name; Symbol sym; b
   
   Expr<out type>  ')' 		
    				(.
+				 if ((TastierType)type != TastierType.Boolean) {
+                                      SemErr("boolean type expected");
+                                    }
+
 			         program.Add(new Instruction("", "FJmp " + openLabels.Peek())); 
 				.)
 
@@ -658,7 +738,7 @@ Tastier                         (.  string name; bool external = false; .)
  
 
  '{'
-  { ConstDecl | VarDecl<external> | ProcDecl | ExternDecl }
+  {  ConstDecl | VarDecl<external> | ProcDecl | ExternDecl }
   '}'                           (.
                                     if (openScopes.Peek().Count == 0) {
                                       Warn("Warning: Program " + name + " is empty ");
@@ -744,30 +824,58 @@ ConstDecl	                (.
 
 
 VarDecl<bool external>          (.
-                                    string name; TastierType type; Scope currentScope = openScopes.Peek();
+                                    string name; int n; TastierType type; Scope currentScope = openScopes.Peek();
                                 .)
 = Type<out type>
-  Ident<out name>               (.
+				 (.
+				   int varType = 4;
+				   program.Add(new Instruction("", "StoG " + varType));
+				 .)
+  Ident<out name>               
+   
+
+  (				(.
                                     if (external) {
                                       externalDeclarations.Push(new Symbol(name, (int)TastierKind.Var, (int)type, 0, 0));
                                       printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, 0, 0));
 				   } else {
-                                      currentScope.Push(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, currentScope.Count(s => s.Item2 ==					   (int)TastierKind.Var | s.Item2 == (int)TastierKind.Const )));
+                                      currentScope.Push(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, currentScope.Count(s => s.Item2 == 						(int)TastierKind.Var)));
                                    printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, currentScope.Count(s => s.Item2 ==
 				   (int)TastierKind.Var | s.Item2 == (int)TastierKind.Const)));
 				   }
                                 .)
-  { ',' Ident<out name>         (.
+  
+ 
+      { ',' Ident<out name>      (.
                                     if (external) {
                                       externalDeclarations.Push(new Symbol(name, (int)TastierKind.Var, (int)type, 0, 0));
                                       printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, 0, 0));	
 				 } else {
-                                      currentScope.Push(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, currentScope.Count(s => s.Item2 ==	 					(int)TastierKind.Var  | s.Item2 == (int)TastierKind.Const)));
-                                    printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, currentScope.Count(s => s.Item2 ==
-				    (int)TastierKind.Var  | s.Item2 == (int)TastierKind.Const)));
+                                      currentScope.Push(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, currentScope.Count(s => s.Item2 ==
+				      (int)TastierKind.Var )));
+                                  printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, currentScope.Count(s => s.Item2 ==
+				    (int)TastierKind.Var )));
 				    }
                                 .)
-  } ';'.
+      }   
+
+
+  |  '[' Expr<out type>		(.
+				  n = Convert.ToInt32(t.val);
+				 currentScope.Push(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, n ));
+				 printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, n ));
+
+  				.)
+  ']'
+	 
+ )';'.
+
+  
+ 
+
+
+  
+  
 
 
 
