@@ -853,8 +853,7 @@ StructDecl
 	
     {
      VarDecl<external>
-     Ident<out name2>
-     ';'
+     
     }
 
 
