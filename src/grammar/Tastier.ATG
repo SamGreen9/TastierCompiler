@@ -15,7 +15,9 @@ COMPILER Tastier
     Var,
     Proc,
     Const,
-    Array
+    Array,
+    Struct
+	
   };
 
 /*
@@ -249,6 +251,8 @@ Symbol lookup(Stack<Scope> scopes, string name) {
   manipulate them, you can LoadG and StoG to those locations.
 */
 
+ int memOffset = 0;
+
 /*--------------------------------------------------------------------------*/
 
 CHARACTERS
@@ -346,19 +350,10 @@ Factor<out TastierType type>    (.  int n, arrayIndex = 0; Symbol sym; string na
 					program.Add(new Instruction("", "StoG " + (sym.Item5+3)));
 					program.Add(new Instruction("", "LoadG " + (sym.Item5+3)));
                                      }else if((TastierKind)sym.Item2 == TastierKind.Array ){
-			           	program.Add(new Instruction("", "LoadG " + (sym.Item5) + arrayIndex));
+			           	program.Add(new Instruction("", "LoadG " + (sym.Item5 + arrayIndex)));
 				     } else SemErr("variable expected");
                                     }
                                 .)
-
-
-				    
-				  
-
-
-
-       
-
 
 
 
@@ -545,13 +540,17 @@ Stat                            (.  TastierType type, type2; int arrayIndex = 0;
                                     if (type != (TastierType)sym.Item3) {
                                       SemErr("incompatible types");
                                     }
-                                    if (sym.Item4 == 0) {
+				    if((TastierKind)sym.Item2 == TastierKind.Array){ 
+			//	      	program.Add(new Instruction("", "StoreS "+ (sym.Item5+3 + arrayIndex) ));
+					program.Add(new Instruction("", "StoG " + (sym.Item5 + arrayIndex) ));
+			
+				      }
+                                   
+				   if (sym.Item4 == 0) {
                                       if (isExternal) {
                                         program.Add(new Instruction("", "StoG " + sym.Item1));
                                         // if the symbol is external, we also store it by name. The linker will resolve the name to an address.
-                                      } else if(sym.Item2 == (int)TastierKind.Array){
-				      	program.Add(new Instruction("", "StoS "+ 7 + arrayIndex));
-				      } else {
+                                      } else {
                                         program.Add(new Instruction("", "StoG " + (sym.Item5+3)));
                                       }
                                     }
@@ -641,7 +640,6 @@ Stat                            (.  TastierType type, type2; int arrayIndex = 0;
 
                                     openLabels.Push(generateLabel());
                                   sym = lookup(openScopes, "switchVar");
-				  // program.Add(new Instruction("", "StoG " + (sym.Item5+3)));
 				   program.Add(new Instruction("", "LoadG " + (sym.Item5+3)));
 				   program.Add(new Instruction("", "Equ"));
                                     program.Add(new Instruction("", "FJmp " + openLabels.Peek()));
@@ -784,7 +782,7 @@ Tastier                         (.  string name; bool external = false; .)
  
 
  '{'
-  {  ConstDecl | VarDecl<external> | ProcDecl | ExternDecl }
+  {  StructDecl | ConstDecl | VarDecl<external> | ProcDecl | ExternDecl }
   '}'                           (.
                                     if (openScopes.Peek().Count == 0) {
                                       Warn("Warning: Program " + name + " is empty ");
@@ -839,6 +837,29 @@ Type<out TastierType type>
  ).
 
 /*------------------------------------------------------------------------*/
+
+StructDecl	
+				(.
+				  String name, name2; Scope currentScope = openScopes.Peek(); bool external = false; 
+				.)
+="struct"
+  Ident<out name>
+  '{'
+				(.
+ 				  Symbol s1 = new Symbol(name, (int)TastierKind.Struct, (int)TastierType.Undefined, openScopes.Count-1,currentScope.Count( s =>
+				  s.Item2 == (int)TastierKind.Struct), 0);
+				.)
+
+	
+    {
+     VarDecl<external>
+     Ident<out name2>
+     ';'
+    }
+
+
+  '}'';'.
+
 
 
 ConstDecl	                (.
@@ -906,29 +927,26 @@ VarDecl<bool external>          (.
                                  }
 				 arraySize = Convert.ToInt32(t.val);
 				 n = arraySize;
-				 currentScope.Push(new Symbol(name, (int)TastierKind.Array, (int)type, openScopes.Count-1, 7, arraySize ));
-				 printSymbol(new Symbol(name, (int)TastierKind.Array, (int)type, openScopes.Count-1, 7, arraySize));
+				 int memOffset = 4;	
+				 currentScope.Push(new Symbol(name, (int)TastierKind.Array, (int)type, openScopes.Count-1, (memOffset + 3), arraySize ));
+				 printSymbol(new Symbol(name, (int)TastierKind.Array, (int)type, openScopes.Count-1, (memOffset + 3), arraySize));
 			
-			          program.Add(new Instruction("", "MemRef " + 7));
-				   program.Add(new Instruction("", "AddStk " + arraySize));
-			//	   program.Add(new Instruction("", "Const " + 49 ));
-	//	//		   program.Add(new Instruction("", "MemRef " + 7));
-			//	   program.Add(new Instruction("", "Load " + 4 + 3 ));
-			//	   int j = Convert.ToInt32(t.val);
-			//	  printSymbol(new Symbol("YOLO", (int)TastierKind.Array, (int)type, j, currentScope.Count(s => s.Item2 ==
-		//		  (int)TastierKind.Var ),j ));
 
-  				.)
+			       // program.Add(new Instruction("", "AddStk " + arraySize));
+
+  
+				for(int i = 0; i < n; i++){
+				   program.Add(new Instruction("", "Const " + 0));
+				  // program.Add(new Instruction("", "StoG " + (memOffset)));
+			          program.Add(new Instruction("", "StoG " + (memOffset + 3)));
+				   memOffset ++;	
+				
+				}
+//	   		          program.Add(new Instruction("", "MemRef " + 10));
+			    	.)
   ']'
 	 
  )';'.
-
-  
- 
-
-
-  
-  
 
 
 
