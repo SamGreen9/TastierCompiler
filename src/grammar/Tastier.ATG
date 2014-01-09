@@ -298,9 +298,11 @@ Expr<out TastierType type>      (.  TastierType type1; Instruction inst; .)
 
 /*------------------------------------------------------------------------*/
 
-Factor<out TastierType type>    (.  int n; Symbol sym; string name; .)
+Factor<out TastierType type>    (.  int n, arrayIndex; Symbol sym; string name; .)
 =                               (.  type = TastierType.Undefined; .)
-  ( Ident<out name>             (.
+  ( Ident<out name>             
+
+	(			(.
                                     bool isExternal = false; //CS3071 students can ignore external declarations, since they only deal with compilation of single files.
                                     sym = lookup(openScopes, name);
                                     if (sym == null) {
@@ -333,6 +335,29 @@ Factor<out TastierType type>    (.  int n; Symbol sym; string name; .)
                                       } else SemErr("variable expected");
                                     }
                                 .)
+
+        |'[' Expr<out type> ']'    (.
+
+				    sym = lookup(openScopes, name);
+				      if (sym == null) {
+                                     	 sym = _lookup(externalDeclarations, name);
+                                     
+                                    }
+				   arrayIndex = Convert.ToInt32(t.val);
+				   if(arrayIndex > (sym.Item6 - 1)){
+					SemErr("Array index out of bounds.");
+				   }
+
+			           program.Add(new Instruction("", "LoadG " + (sym.Item5) + arrayIndex));
+				    .)
+
+
+
+       )
+
+
+
+
   | number                      (.
                                     n = Convert.ToInt32(t.val);
                                     program.Add(new Instruction("", "Const " + n));
@@ -375,8 +400,8 @@ MulOp<out Instruction inst>
 ProcDecl                        (.  string name; string label; Scope currentScope = openScopes.Peek(); int enterInstLocation = 0; bool external = false; .)
 = "void"
   Ident<out name>               (.
-                                    currentScope.Push(new Symbol(name, (int)TastierKind.Proc, (int)TastierType.Undefined, openScopes.Count, -1));
-               			    printSymbol(new Symbol(name, (int)TastierKind.Proc, (int)TastierType.Undefined, openScopes.Count, -1));
+                                    currentScope.Push(new Symbol(name, (int)TastierKind.Proc, (int)TastierType.Undefined, openScopes.Count, -1, 0));
+               			    printSymbol(new Symbol(name, (int)TastierKind.Proc, (int)TastierType.Undefined, openScopes.Count, -1, 0));
 				    openScopes.Push(new Scope());
                	                    currentScope = openScopes.Peek();
                                 .)
@@ -452,10 +477,11 @@ SimExpr<out TastierType type>   (.  TastierType type1; Instruction inst; .)
 
 /*------------------------------------------------------------------------*/
 
-Stat                            (.  TastierType type; string name; Symbol sym; bool external = false; bool isExternal = false; Scope currentScope = openScopes.Peek(); .)
+Stat                            (.  TastierType type, type2; int arrayIndex = 0; string name; 
+					Symbol sym; bool external = false; bool isExternal = false; Scope currentScope = openScopes.Peek(); .)
 
-= Ident<out name>               (.
-                                    sym = lookup(openScopes, name);
+= Ident<out name>          (.
+			     sym = lookup(openScopes, name);
                                     if (sym == null) {
                                       sym = _lookup(externalDeclarations, name);
                                       isExternal = true;
@@ -463,13 +489,27 @@ Stat                            (.  TastierType type; string name; Symbol sym; b
                                     if (sym == null) {
                                       SemErr("reference to undefined variable " + name);
                                     }
-				   //Throw error when user tries to reassign a constant
-				   if ((TastierKind)sym.Item2 == TastierKind.Const) {
+				if ((TastierKind)sym.Item2 == TastierKind.Const) {
 				      SemErr("Error: Cannot reassign a constant's value.");
                                     } 
-                                .)
+				if ((TastierKind)sym.Item2 == TastierKind.Const) {
+				      SemErr("Error: Cannot reassign a constant's value.");
+                                    }	
+			   .)     
+
+    {  '[' Expr<out type>    (.
+				 arrayIndex = Convert.ToInt32(t.val);
+				  if(arrayIndex > (sym.Item6 - 1)){
+					SemErr("Array index out of bounds.");
+				   }
+			     .)
+	']'			    
+				    
+      	
+    }
+   
   ( ":="                         (.
-                                    if ((TastierKind)sym.Item2 != TastierKind.Var) {
+                                    if ((TastierKind)sym.Item2 != TastierKind.Var && (TastierKind)sym.Item2 != TastierKind.Array) {
                                       SemErr("cannot assign to non-variable");
                                     }
                                 .)
@@ -505,7 +545,9 @@ Stat                            (.  TastierType type; string name; Symbol sym; b
                                       if (isExternal) {
                                         program.Add(new Instruction("", "StoG " + sym.Item1));
                                         // if the symbol is external, we also store it by name. The linker will resolve the name to an address.
-                                      } else {
+                                      } else if(sym.Item2 == (int)TastierKind.Array){
+				      	program.Add(new Instruction("", "StoS "+ 7 + arrayIndex));
+				      } else {
                                         program.Add(new Instruction("", "StoG " + (sym.Item5+3)));
                                       }
                                     }
@@ -514,7 +556,7 @@ Stat                            (.  TastierType type; string name; Symbol sym; b
                                       program.Add(new Instruction("", "Sto " + lexicalLevelDifference + " " + sym.Item5));
                                     }
                                 .)
- 
+  
  
   | '(' ')' ';'                 (.
                                     if ((TastierKind)sym.Item2 != TastierKind.Proc) {
@@ -560,7 +602,7 @@ Stat                            (.  TastierType type; string name; Symbol sym; b
                                       SemErr("integer type expected");
                                     }
  
- 				  Symbol s1 = new Symbol("switchVar",(int)TastierKind.Var, (int)TastierType.Integer, 0, currentScope.Count(s => s.Item2 == (int)TastierKind.Var)); 	
+ 				  Symbol s1 = new Symbol("switchVar",(int)TastierKind.Var, (int)TastierType.Integer, 0, currentScope.Count(s => s.Item2 == (int)TastierKind.Var), 0); 	
 				   currentScope.Push(s1);
 				             
 				.)
@@ -770,7 +812,7 @@ Tastier                         (.  string name; bool external = false; .)
                                 .).
 
 /*------------------------------------------------------------------------*/
-
+				    
 Term<out TastierType type>      (.  TastierType type1; Instruction inst; .)
 = Factor<out type>
   { MulOp<out inst>
@@ -806,16 +848,16 @@ ConstDecl	                (.
 			         //Store value of constant in s.Item4 because this field will be 
 				 //unused since a constant will always be global, then push to current scope.
 				 Symbol s1 = new Symbol(name, (int)TastierKind.Const, (int)TastierType.Integer, n, currentScope.Count(s => s
-				   .Item2  ==  (int)TastierKind.Var | s.Item2 == (int)TastierKind.Const));  
+				   .Item2  ==  (int)TastierKind.Var | s.Item2 == (int)TastierKind.Const), 0);  
 			           currentScope.Push(s1); 
 				.)
 
 		
 { ',' Ident<out name>         (.
                                    currentScope.Push(new Symbol(name, (int)TastierKind.Const, (int)TastierType.Integer, openScopes.Count-1, currentScope.Count(s =>
-				   s.Item2 == (int)TastierKind.Var | s.Item2 == (int)TastierKind.Const)));
+				   s.Item2 == (int)TastierKind.Var | s.Item2 == (int)TastierKind.Const), 0));
 				   printSymbol(new Symbol(name, (int)TastierKind.Const, (int)TastierType.Integer, openScopes.Count-1,currentScope.Count(s =>s.Item2  ==
-				   (int)TastierKind.Var | s.Item2 == (int)TastierKind.Const)));
+				   (int)TastierKind.Var | s.Item2 == (int)TastierKind.Const), 0));
 				    
                                 .)
   } ';'.
@@ -824,46 +866,53 @@ ConstDecl	                (.
 
 
 VarDecl<bool external>          (.
-                                    string name; int n; TastierType type; Scope currentScope = openScopes.Peek();
+                                    string name; int arraySize, n; TastierType type, type2; Scope currentScope = openScopes.Peek();
                                 .)
 = Type<out type>
-				 (.
-				   int varType = 4;
-				   program.Add(new Instruction("", "StoG " + varType));
-				 .)
-  Ident<out name>               
-   
-
+				 
+  Ident<out name>                      
   (				(.
                                     if (external) {
-                                      externalDeclarations.Push(new Symbol(name, (int)TastierKind.Var, (int)type, 0, 0));
-                                      printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, 0, 0));
+                                      externalDeclarations.Push(new Symbol(name, (int)TastierKind.Var, (int)type, 0, 0, 0));
+                                      printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, 0, 0, 0));
 				   } else {
-                                      currentScope.Push(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, currentScope.Count(s => s.Item2 == 						(int)TastierKind.Var)));
+                                      currentScope.Push(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, currentScope.Count(s => s.Item2 == (int)TastierKind.Var), 0));
                                    printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, currentScope.Count(s => s.Item2 ==
-				   (int)TastierKind.Var | s.Item2 == (int)TastierKind.Const)));
+				   (int)TastierKind.Var | s.Item2 == (int)TastierKind.Const), 0));
 				   }
                                 .)
   
  
       { ',' Ident<out name>      (.
                                     if (external) {
-                                      externalDeclarations.Push(new Symbol(name, (int)TastierKind.Var, (int)type, 0, 0));
-                                      printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, 0, 0));	
+                                      externalDeclarations.Push(new Symbol(name, (int)TastierKind.Var, (int)type, 0, 0, 0));
+                                      printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, 0, 0, 0));	
 				 } else {
                                       currentScope.Push(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, currentScope.Count(s => s.Item2 ==
-				      (int)TastierKind.Var )));
-                                  printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, currentScope.Count(s => s.Item2 ==
-				    (int)TastierKind.Var )));
+				      (int)TastierKind.Var ), 0));
+                                  printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, currentScope.Count(s => s.Item2 ==  (int)TastierKind.Var ), 0));
 				    }
                                 .)
       }   
 
 
-  |  '[' Expr<out type>		(.
-				  n = Convert.ToInt32(t.val);
-				 currentScope.Push(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, n ));
-				 printSymbol(new Symbol(name, (int)TastierKind.Var, (int)type, openScopes.Count-1, n ));
+  |  '[' Expr<out type2>	(.
+				 if(type2 != TastierType.Integer){
+                                      SemErr("integer type expected");
+                                 }
+				 arraySize = Convert.ToInt32(t.val);
+				 n = arraySize;
+				 currentScope.Push(new Symbol(name, (int)TastierKind.Array, (int)type, openScopes.Count-1, 7, arraySize ));
+				 printSymbol(new Symbol(name, (int)TastierKind.Array, (int)type, openScopes.Count-1, 7, arraySize));
+			
+			          program.Add(new Instruction("", "MemRef " + 7));
+				   program.Add(new Instruction("", "AddStk " + arraySize));
+			//	   program.Add(new Instruction("", "Const " + 49 ));
+	//	//		   program.Add(new Instruction("", "MemRef " + 7));
+			//	   program.Add(new Instruction("", "Load " + 4 + 3 ));
+			//	   int j = Convert.ToInt32(t.val);
+			//	  printSymbol(new Symbol("YOLO", (int)TastierKind.Array, (int)type, j, currentScope.Count(s => s.Item2 ==
+		//		  (int)TastierKind.Var ),j ));
 
   				.)
   ']'
@@ -884,7 +933,7 @@ ExternDecl                      (.  string name; bool external = true; Scope cur
 = "external"
   ( VarDecl<external>
   | "procedure" Ident<out name> ';'
-                                (.  externalDeclarations.Push(new Symbol(name, (int)TastierKind.Proc, (int)TastierType.Undefined, 1, -1)); .)
+                                (.  externalDeclarations.Push(new Symbol(name, (int)TastierKind.Proc, (int)TastierType.Undefined, 1, -1, 0)); .)
   ) .
 
 END Tastier.

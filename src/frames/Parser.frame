@@ -30,7 +30,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 
-using Symbol = System.Tuple<string, int, int, int, int>;
+using Symbol = System.Tuple<string, int, int, int, int, int>;
 using Instruction = System.Tuple<string,string>;
 using StackAddress = System.Tuple<int, int>;
 
@@ -68,7 +68,7 @@ public class Parser {
 
 	//Print method
 	public void printSymbol(Symbol S){
-	Console.WriteLine("Symbol Table Entry: (" + S.Item1 +", " + S.Item2+ ", "+ S.Item3+ ", "+ S.Item4 + ", " + S.Item5 + ")");
+	Console.WriteLine("Symbol Table Entry: (" + S.Item1 +", " + S.Item2+ ", "+ S.Item3+ ", "+ S.Item4 + ", " + S.Item5 + ", " + S.Item6 + ")");
 	String item5 = null, item4 = null, item3 = null, item2 = null;
 	if(S.Item5 != -1){
 		item5 = "\nVariable Address: " + S.Item5;	
@@ -86,12 +86,22 @@ public class Parser {
 	}
 	if(S.Item2 == 0){
 		item2 = "Variable";
-	}else{
+	}else if(S.Item2 ==1){
+		item2 = "Const";
+	}else if(S.Item2 ==2){
 		item2 = "Procedure";
+	}else {
+		item2 = "Array";
+	}
+
+	String item6 = null;
+	if(S.Item2 == 3){
+	    item6 += "Array size: ";
+	    item6 += S.Item6;
 	}
 
 	Console.WriteLine("Name:\t" + S.Item1 + "\nKind:\t" + item2 +
-			"\nType:\t" + item3 + "\nScope:\t" + item4 + item5 + "\n");
+			"\nType:\t" + item3 + "\nScope:\t" + item4 + item5 + "" + "\n" + item6 + "\n");
 
 	}
 
