@@ -298,17 +298,30 @@ Expr<out TastierType type>      (.  TastierType type1; Instruction inst; .)
 
 /*------------------------------------------------------------------------*/
 
-Factor<out TastierType type>    (.  int n, arrayIndex; Symbol sym; string name; .)
+Factor<out TastierType type>    (.  int n, arrayIndex = 0; Symbol sym; string name; .)
 =                               (.  type = TastierType.Undefined; .)
   ( Ident<out name>             
 
-	(			(.
+				(.
                                     bool isExternal = false; //CS3071 students can ignore external declarations, since they only deal with compilation of single files.
                                     sym = lookup(openScopes, name);
                                     if (sym == null) {
                                       sym = _lookup(externalDeclarations, name);
                                       isExternal = true;
                                     }
+				.)
+	{  '[' Expr<out type> 
+				(.
+				   arrayIndex = Convert.ToInt32(t.val);
+				    if(arrayIndex > (sym.Item6 - 1)){
+					SemErr("Array index out of bounds.");
+				   }
+
+				.)
+	
+	']'
+	}
+				  (.
 
                                     if (sym == null) {
                                       SemErr("reference to undefined variable " + name);
@@ -332,28 +345,19 @@ Factor<out TastierType type>    (.  int n, arrayIndex; Symbol sym; string name; 
 					program.Add(new Instruction("", "Const " + sym.Item4));
 					program.Add(new Instruction("", "StoG " + (sym.Item5+3)));
 					program.Add(new Instruction("", "LoadG " + (sym.Item5+3)));
-                                      } else SemErr("variable expected");
+                                     }else if((TastierKind)sym.Item2 == TastierKind.Array ){
+			           	program.Add(new Instruction("", "LoadG " + (sym.Item5) + arrayIndex));
+				     } else SemErr("variable expected");
                                     }
                                 .)
 
-        |'[' Expr<out type> ']'    (.
 
-				    sym = lookup(openScopes, name);
-				      if (sym == null) {
-                                     	 sym = _lookup(externalDeclarations, name);
-                                     
-                                    }
-				   arrayIndex = Convert.ToInt32(t.val);
-				   if(arrayIndex > (sym.Item6 - 1)){
-					SemErr("Array index out of bounds.");
-				   }
-
-			           program.Add(new Instruction("", "LoadG " + (sym.Item5) + arrayIndex));
-				    .)
+				    
+				  
 
 
 
-       )
+       
 
 
 
