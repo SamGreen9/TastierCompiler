@@ -251,8 +251,9 @@ Symbol lookup(Stack<Scope> scopes, string name) {
   manipulate them, you can LoadG and StoG to those locations.
 */
 
-// int firstAddress = 4;
- int memOffset = 4;
+ int memOffset = 4;	// Global integer which stores the first available memory address.
+			// It will be incremented every time a store is made to it's address.
+
  Dictionary<string, List<string>> structDict = new Dictionary<string, List<string>>();
  Dictionary<string, string> structInstances = new Dictionary<string, string>();
 
@@ -291,6 +292,13 @@ AddOp<out Instruction inst>
   ).
 
 /*------------------------------------------------------------------------*/
+
+/*
+  For my extra feature I added the auto-increment and auto-decrement operators.
+  New instructions were added to the haskell files inside the TastierMachine directory,
+  These instructions were named "Inc" and "Dec" to convey their functions. The instructions
+  simply take in one parameter and either add or subtract 1 to the original value.
+*/
 
 MyOp<out Instruction inst>
 =				(.  inst = new Instruction("", "Inc"); .)
@@ -331,7 +339,8 @@ Factor<out TastierType type>    (.  int n, arrayIndex = 0; Symbol sym = null; st
                                       isExternal = true;
                                     }
 				.)
-	{  '[' Expr<out type> 
+
+	{  '[' Expr<out type> 	  		//Parses 0 or more occurences of square brackets which denote an array index  
 				(.
 				   arrayIndex = Convert.ToInt32(t.val);
 				    if(arrayIndex > (sym.Item6 - 1)){
@@ -343,7 +352,12 @@ Factor<out TastierType type>    (.  int n, arrayIndex = 0; Symbol sym = null; st
 	']'
 	}
 
-| '.' Ident<out name2>        (.
+/*
+  The section below parses notation for a struct
+*/  
+
+
+| '.' Ident<out name2>        (.             
 					
 				  if(structInstances.ContainsKey(name)){
 					string keyVal = structInstances[name];
@@ -356,7 +370,7 @@ Factor<out TastierType type>    (.  int n, arrayIndex = 0; Symbol sym = null; st
 					  }else{
 					     sym = lookup(openScopes, name2);
                                 	     if (sym == null) {
-                                               SemErr("reference to undefined variable 3 " + name);
+                                               SemErr("reference to undefined variable " + name);
                              		     }
 
 					  }
@@ -366,22 +380,6 @@ Factor<out TastierType type>    (.  int n, arrayIndex = 0; Symbol sym = null; st
 				  }else{
 					SemErr("Error!" + name + " has not been declared!");
 				  }
-//   | '.' Ident<out name2>        (.
-//  				  if(!structDict.ContainsKey(name)){
-//				     SemErr("Error! This is not a valid struct name!");
-//				  } else {
-//				     List<string> newList = structDict[name];
-//				     bool contains = newList.Exists(element => element == name2); 
-//				     if(contains == false){
-//					SemErr("The variable entered is not valid to this struct.");	
-//				     }
-//				     sym = lookup(openScopes, name2);
-//                                    if (sym == null) {
-//                                      SemErr("reference to undefined variable " + name);
-//                                    }
-				 
-//				 }
-
 
 				.)
 
@@ -390,7 +388,7 @@ Factor<out TastierType type>    (.  int n, arrayIndex = 0; Symbol sym = null; st
   				  (.
 
                                     if (sym == null) {
-                                      SemErr("reference to undefined variable 1  " + name);
+                                      SemErr("reference to undefined variable  " + name);
                                     }
                                     else {
                                       type = (TastierType)sym.Item3;
@@ -406,7 +404,7 @@ Factor<out TastierType type>    (.  int n, arrayIndex = 0; Symbol sym = null; st
                                             int lexicalLevelDifference = Math.Abs(openScopes.Count - sym.Item4)-1;
                                             program.Add(new Instruction("", "Load " + lexicalLevelDifference + " " + sym.Item5));
                                         }
-				     //pull value of const instruction. store and load
+				     // Load the value of the const. It's value is stored in sym.Item4. Load it onto top of stack.
 				     }else if((TastierKind)sym.Item2 == TastierKind.Const ){
 					program.Add(new Instruction("", "Const " + sym.Item4));
 					program.Add(new Instruction("", "StoG " + (sym.Item5+3)));
@@ -517,7 +515,7 @@ RelOp<out Instruction inst>
   ( '='
   | '<'                          (.  inst = new Instruction("", "Lss"); .)
   | '>'                          (.  inst = new Instruction("", "Gtr"); .)
-  | ">="                         (.  inst = new Instruction("", "GtrEq"); .)
+  | ">="                         (.  inst = new Instruction("", "GtrEq"); .)   //Added relevant RelOps
   | "<="                         (.  inst = new Instruction("", "LssEq"); .)
   | "!="                         (.  inst = new Instruction("", "NotEq"); .)
 
@@ -534,7 +532,7 @@ SimExpr<out TastierType type>   (.  TastierType type1; Instruction inst; .)
                                     }
                                     program.Add(inst);
                                 .)
-    |  MyOp<out inst>		(.
+    |  MyOp<out inst>		(.					 //Modified grammar to parse increment or decrement instructions.
     				   if (type != TastierType.Integer ) {
                                       SemErr("integer type expected");
                                     }
@@ -549,8 +547,8 @@ SimExpr<out TastierType type>   (.  TastierType type1; Instruction inst; .)
 
 /*------------------------------------------------------------------------*/
 
-Stat                            (.  TastierType type, type2; int exprVal, arrayIndex = 0; int firstAddress = 4; string name, name2; 
-					Symbol sym = null; bool external = false; bool isExternal = false; Scope currentScope = openScopes.Peek(); .)
+Stat                            (.  TastierType type; int arrayIndex = 0; string name, name2; Symbol sym = null;  
+				    bool external = false; bool isExternal = false; Scope currentScope = openScopes.Peek(); .)
 = Ident<out name>        
    (			    
  				 (.
@@ -560,18 +558,21 @@ Stat                            (.  TastierType type, type2; int exprVal, arrayI
                                       isExternal = true;
                                     }
                                     if (sym == null) {
-                                      SemErr("reference to undefined variable  2 " + name);
+                                      SemErr("reference to undefined variable " + name);
                                     }
 				    if ((TastierKind)sym.Item2 == TastierKind.Const) {
 				      SemErr("Error: Cannot reassign a constant's value.");
                                     } 
-			            if ((TastierKind)sym.Item2 == TastierKind.Const) {
-				      SemErr("Error: Cannot reassign a constant's value.");
-                                    }	
+			            
 			  	.)     
 
-     {  '[' Expr<out type>       (.
-				 arrayIndex = Convert.ToInt32(t.val);
+
+
+//  The section below will parse array notation(ie. myArray[2]).
+//  The index specified by the user is stored in the int 'arrayIndex'
+
+     {  '[' Expr<out type>       (.			
+		       		  arrayIndex = Convert.ToInt32(t.val);
 				  if(arrayIndex > (sym.Item6 - 1)){
 					SemErr("Array index out of bounds.");
 				   }
@@ -579,6 +580,16 @@ Stat                            (.  TastierType type, type2; int exprVal, arrayI
 	']'			    
 				    
      }
+ 
+  /*
+    The section below is used to parse any statements that assign a value
+    to any member of a struct( ie. structVariable.member := 5).
+    The list of struct variables and their corresponding struct types is stored in the
+    Dictionary structInstances. It is ensured below that the struct variable is valid 
+    and also that the type it belongs to is valid by using the Dictionary.ContainsKey 
+    function. It is also asserted that the member variable is valid, and has been specified
+    in the struct declararion. It then sets sym to be the second Ident(ie. the member variable).
+  */ 
 
   | '.' Ident<out name2>        (.
 					
@@ -587,13 +598,13 @@ Stat                            (.  TastierType type, type2; int exprVal, arrayI
 				  
 				  	if(structDict.ContainsKey(keyVal)){
 				          List<string> newList = structDict[keyVal];
-				          if(!(newList.Exists(element => element == name2))){
+				          if(!(newList.Exists(element => element == name2))){    //Ensure member variable is valid.
 					     SemErr("Error!" + name2 + " is not a member of the struct type: " + keyVal + "!");     
 
 					  }else{
 					     sym = lookup(openScopes, name2);
                                 	     if (sym == null) {
-                                               SemErr("reference to undefined variable 3 " + name);
+                                               SemErr("reference to undefined variable " + name);
                              		     }
 
 					  }
@@ -605,24 +616,7 @@ Stat                            (.  TastierType type, type2; int exprVal, arrayI
 				  }
 
 
-  		//		  if(!structInstances.ContainsKey(name)){
-		//		     SemErr("Error! This is not a valid struct name!");
-			//	  } else {
-				   //  List<string> newList = structDict[name];
-				  //   bool contains = newList.Exists(element => element == name2); 
-				 //    if(contains == false){
-				//	SemErr("The variable entered is not valid to this struct.");	
-				   //  }
-				  //   sym = lookup(openScopes, name2);
-                                  //  if (sym == null) {
-                                  //    SemErr("reference to undefined variable " + name);
-                                  //  }
-				 
-				// }
-
-
-				.)
-//
+  						.)
 
     )  
   ( ":="                         (.
@@ -632,14 +626,15 @@ Stat                            (.  TastierType type, type2; int exprVal, arrayI
                                 .)
   Expr<out type>
   
-  ['?'                           //Ternary Operator
+  ['?'                           //The section below parses statements in the form of the ternary(?) operator
 				(.
 				   if ((TastierType)type != TastierType.Boolean) {
 				       SemErr("boolean type expected");
 				   }
 				 openLabels.Push(generateLabel()); 
-				 program.Add(new Instruction("", "FJmp " + openLabels.Peek()));
-
+				//Jump to second statement if condition was false;
+			         program.Add(new Instruction("", "FJmp " + openLabels.Peek()));
+			
 				.)
  
  Expr<out type> ':'            (.
@@ -658,8 +653,9 @@ Stat                            (.  TastierType type, type2; int exprVal, arrayI
                                     if (type != (TastierType)sym.Item3) {
                                       SemErr("incompatible types");
                                     }
+				    
+				    //If the symbol is part of an array, store th
 				    if((TastierKind)sym.Item2 == TastierKind.Array){ 
-			//	      	program.Add(new Instruction("", "StoreS "+ (sym.Item5+3 + arrayIndex) ));
 					program.Add(new Instruction("", "StoG " + (sym.Item5 + arrayIndex) ));
 			
 				      }
@@ -953,7 +949,6 @@ Tastier                         (.  string name; bool external = false; .)
 
  '{'
   {  StructDecl | ConstDecl | VarDecl<external> | ProcDecl | ExternDecl }
-//  {  ConstDecl | VarDecl<external> | ProcDecl | ExternDecl }
   '}'                           (.
                                     if (openScopes.Peek().Count == 0) {
                                       Warn("Warning: Program " + name + " is empty ");
@@ -1012,7 +1007,7 @@ Type<out TastierType type>
 
 StructDecl	
 				(.
-				  String name, name2, name3; TastierType type; Scope currentScope = openScopes.Peek(); bool external = false; 
+				  String name, name2, name3; TastierType type; Scope currentScope = openScopes.Peek();  
 				.)
 ="struct"  Ident<out name>
 (
@@ -1122,12 +1117,10 @@ VarDecl<bool external>          (.
   
 				for(int i = 0; i < n; i++){
 				   program.Add(new Instruction("", "Const " + 0));
-				  // program.Add(new Instruction("", "StoG " + (memOffset)));
 			          program.Add(new Instruction("", "StoG " + (memOffset + 3)));
 				   memOffset ++;	
 				
 				}
-//	   		          program.Add(new Instruction("", "MemRef " + 10));
 			    	.)
   ']'
 	 
