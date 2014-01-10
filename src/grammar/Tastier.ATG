@@ -322,7 +322,7 @@ Factor<out TastierType type>    (.  int n, arrayIndex = 0; Symbol sym = null; st
 =                               (.  type = TastierType.Undefined; bool isExternal = false;.)
   ( Ident<out name>             
 
-     // (
+      (
      				   (.
                                      //CS3071 students can ignore external declarations, since they only deal with compilation of single files.
                                     sym = lookup(openScopes, name);
@@ -343,7 +343,29 @@ Factor<out TastierType type>    (.  int n, arrayIndex = 0; Symbol sym = null; st
 	']'
 	}
 
+| '.' Ident<out name2>        (.
+					
+				  if(structInstances.ContainsKey(name)){
+					string keyVal = structInstances[name];
+				  
+				  	if(structDict.ContainsKey(keyVal)){
+				          List<string> newList = structDict[keyVal];
+				          if(!(newList.Exists(element => element == name2))){
+					     SemErr("Error!" + name2 + " is not a member of the struct type: " + keyVal + "!");     
 
+					  }else{
+					     sym = lookup(openScopes, name2);
+                                	     if (sym == null) {
+                                               SemErr("reference to undefined variable 3 " + name);
+                             		     }
+
+					  }
+					}else{
+
+					}
+				  }else{
+					SemErr("Error!" + name + " has not been declared!");
+				  }
 //   | '.' Ident<out name2>        (.
 //  				  if(!structDict.ContainsKey(name)){
 //				     SemErr("Error! This is not a valid struct name!");
@@ -361,9 +383,9 @@ Factor<out TastierType type>    (.  int n, arrayIndex = 0; Symbol sym = null; st
 //				 }
 
 
-//				.)
+				.)
 
-//  )
+  )
 
   				  (.
 
@@ -765,13 +787,10 @@ Stat                            (.  TastierType type, type2; int exprVal, arrayI
     
     
     Stat 
-    ["break"                   
 				(.
                                     program.Add(new Instruction("", "Jmp " + switchCases));
                                 .)
-    ';' 
     
-    ]
     				(.
                                     program.Add(new Instruction(openLabels.Pop(), "Nop"));
                                 .)
@@ -792,13 +811,10 @@ Stat                            (.  TastierType type, type2; int exprVal, arrayI
 				    program.Add(new Instruction("", "FJmp " + openLabels.Peek()));
                                 .)
     Stat 
-    ["break"                   
 				(.
                                     program.Add(new Instruction("", "Jmp " + switchCases));
                                 .)
-    ';' 
     
-    ]
     				(.
                                     program.Add(new Instruction(openLabels.Pop(), "Nop"));
                                 .)
