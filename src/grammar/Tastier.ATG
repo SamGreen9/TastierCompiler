@@ -1,5 +1,7 @@
 COMPILER Tastier
 
+// Sam Green - 11440638
+
 /*
   First, let's declare all the types we're going to use.
 */
@@ -353,7 +355,13 @@ Factor<out TastierType type>    (.  int n, arrayIndex = 0; Symbol sym = null; st
 	}
 
 /*
-  The section below parses notation for a struct
+  The section below parses notation for a member variable of a struct data type which is of the 
+  form myStruct.memberVar. Two C# Dictionaries are used for structs. One of these(structInstances) 
+  stores the name of each instance of a struct type(eg. struct Node myNode) as the key and links it
+  to the name of the struct type. The other dictionary(structDict) stores the name of each struct type
+  as the key and links this to a list of its member variables. The if statements below ensure that any
+  access to a member variable for a struct is valid. Also the Symbol variable 'sym' is reassigned
+  the symbol table entry for member variable(name2) of the struct type(name).
 */  
 
 
@@ -570,6 +578,7 @@ Stat                            (.  TastierType type; int arrayIndex = 0; string
 
 //  The section below will parse array notation(ie. myArray[2]).
 //  The index specified by the user is stored in the int 'arrayIndex'
+//  sym.Item6 contains the size of the array.
 
      {  '[' Expr<out type>       (.			
 		       		  arrayIndex = Convert.ToInt32(t.val);
@@ -616,7 +625,7 @@ Stat                            (.  TastierType type; int arrayIndex = 0; string
 				  }
 
 
-  						.)
+  				.)
 
     )  
   ( ":="                         (.
@@ -654,7 +663,10 @@ Stat                            (.  TastierType type; int arrayIndex = 0; string
                                       SemErr("incompatible types");
                                     }
 				    
-				    //If the symbol is part of an array, store th
+				    // If the symbol is part of an array, store the value of the preceding expression
+				    // in the part of the array specified by the index by accessing the memory
+				    // address for the start of the array(sym.Item5) and adding the index.
+				    
 				    if((TastierKind)sym.Item2 == TastierKind.Array){ 
 					program.Add(new Instruction("", "StoG " + (sym.Item5 + arrayIndex) ));
 			
@@ -685,7 +697,9 @@ Stat                            (.  TastierType type; int arrayIndex = 0; string
                                     string procedureLabel = getLabelForProcedureName(lexicalLevelDifference, sym.Item1);
                                     program.Add(new Instruction("", "Call " + lexicalLevelDifference + " " + procedureLabel));
                                 .)
- 
+
+// The code below parses ++ and -- notation for the auto-increment and auto-decrement instructions
+
  |  "++"  	                (.
 		                   if ((TastierKind)sym.Item2 != TastierKind.Var) {
                                        SemErr("Object is not a variable");
@@ -693,6 +707,9 @@ Stat                            (.  TastierType type; int arrayIndex = 0; string
 				    }else if((TastierType)sym.Item3 != TastierType.Integer){
 				       SemErr("Must be an Integer type!");
 				    
+	
+		// Load the value of the variable onto the top of the stack. Call the "Inc" instruction.
+		// Store new value back into the memory address of the original variable.
 				    }else if (sym.Item4 == 0) {
                                         program.Add(new Instruction("", "LoadG " + (sym.Item5+3)));
 					program.Add(new Instruction("", "Inc " ));
@@ -710,7 +727,8 @@ Stat                            (.  TastierType type; int arrayIndex = 0; string
                                     
 				    }else if((TastierType)sym.Item3 != TastierType.Integer){
 				       SemErr("Must be an Integer type!");
-				    
+	  	
+		// Load the variable's value. Call the "Dec" instruction. Store back to memory.
 				    }else if (sym.Item4 == 0) {
                                         program.Add(new Instruction("", "LoadG " + (sym.Item5+3)));
 					program.Add(new Instruction("", "Dec " ));
@@ -724,8 +742,6 @@ Stat                            (.  TastierType type; int arrayIndex = 0; string
   ';'
 
 
- 
-  
  )
 
 | "if"
@@ -759,8 +775,11 @@ Stat                            (.  TastierType type; int arrayIndex = 0; string
 				  if(type != TastierType.Integer){
                                       SemErr("Integer type expected");
                                     }
-				  int memIndex = memOffset ;
-				  memOffset ++;
+				  int memIndex = memOffset; 		//Store the next available memory address
+				  memOffset ++;				//Increment the next available address for future use
+				 
+				 // Store the value of the bracketed switch expression(eg. switch(5)) in memory 
+				 // so that it can be compared later with the expression for each case.
 				  program.Add(new Instruction("", "StoG " + memIndex));	 
 				.)
   
@@ -776,6 +795,10 @@ Stat                            (.  TastierType type; int arrayIndex = 0; string
                                     if(type != TastierType.Integer){
                                       SemErr("Integer type expected");
                                     }
+
+				   // Load the initial switch value and compare with the value of the current
+				   // case expression which will be on top of the stack. If they are not equal
+				   // branch to the next case. Otherwise, execute and jump to the end of the switch statement.
 				   program.Add(new Instruction("", "LoadG " + memIndex));
 				   program.Add(new Instruction("", "Equ"));
                                    program.Add(new Instruction("", "FJmp " + openLabels.Peek()));
@@ -792,7 +815,7 @@ Stat                            (.  TastierType type; int arrayIndex = 0; string
                                 .)
     
     
-
+//Parses 0 or more cases.
   {
     "case"                      
     '(' Expr<out type> ')' ':'  (.  
@@ -801,7 +824,8 @@ Stat                            (.  TastierType type; int arrayIndex = 0; string
                                     }
 
 				    openLabels.Push(generateLabel());
-
+				    
+				    //Functions exactly the same as the code above for the first case.
 				    program.Add(new Instruction("", "LoadG " + memIndex));
 				    program.Add(new Instruction("", "Equ"));
 				    program.Add(new Instruction("", "FJmp " + openLabels.Peek()));
@@ -828,7 +852,7 @@ Stat                            (.  TastierType type; int arrayIndex = 0; string
                                            
   ]
  
-    '}'                         (.
+    '}'                         (.                  //Jump to this point to end switch statement.
                                     program.Add(new Instruction(switchCases, "Nop"));
                                 .)
 
@@ -1004,25 +1028,39 @@ Type<out TastierType type>
 
 /*------------------------------------------------------------------------*/
 
-
+/*
+  The section of code below allows for the declaration of a structured data type(similar to record) called struct.
+  The are two type of declarations for these structs. It can be declared of the form:
+     struct CoOrdinates{ int x; int y; }; 
+  And also an instance of the struct type declared above can be declared, of the form:
+     struct CoOrdinates MyPoints;
+  The grammar allows for either type of declaration. Structs are linked to their member variables 
+  using a C# dictionary with a string key and a list of strings to store each member variable.
+  This dictionary is called structDict. Another dictionary called structInstances was used to link each instance
+  of a struct to it's struct type. Unfortunately, my implementation of struct only accepts variables such as ints 
+  or bools as member variables.
+*/
 StructDecl	
 				(.
 				  String name, name2, name3; TastierType type; Scope currentScope = openScopes.Peek();  
 				.)
 ="struct"  Ident<out name>
 (
-  
+     
      Ident<out name2>		(.
+     				 //Create a new symbol table entry for this instance of the struct
 				 Symbol s1 = new Symbol(name2, (int)TastierKind.Struct, (int)TastierType.Integer, openScopes.Count-1, memOffset, 0);
 				 memOffset++;
 				 currentScope.Push(s1);
 				 structInstances.Add(name2, name);
-				
+				//Add this instance of the struct to the dictionary so that it is linked to its type.				
 				.)
 	';'
-    
+   
+
+
 |   '{'				(.
-				 List<string> varList = new List<string>();
+				 List<string> varList = new List<string>();   //Create a list for the 0 or more members of the struct type
     				.)
 	{ 
 	  Type<out type>
@@ -1035,11 +1073,12 @@ StructDecl
 	}
 
 				(.
-				 structDict.Add(name, varList);
+				 structDict.Add(name, varList);   //Add the name of the struct type and its corresponding members to a new dictionary entry
 				.)
     '}'';' 
    
  ).
+
 
 
 ConstDecl	                (.
@@ -1100,6 +1139,8 @@ VarDecl<bool external>          (.
                                 .)
       }   
 
+// Allow arrays to be declared. A sixth parameter was added to the Symbol type in order to store the size of the array in sym.Item6. Unfortunately,
+// my implementation of arrays only works for 1-dimensional arrays. 
 
   |  '[' Expr<out type2>	(.
 				 if(type2 != TastierType.Integer){
@@ -1107,17 +1148,16 @@ VarDecl<bool external>          (.
                                  }
 				 arraySize = Convert.ToInt32(t.val);
 				 n = arraySize;
-				// int memOffset = 5;	
 				 currentScope.Push(new Symbol(name, (int)TastierKind.Array, (int)type, openScopes.Count-1, (memOffset + 3), arraySize ));
 				 printSymbol(new Symbol(name, (int)TastierKind.Array, (int)type, openScopes.Count-1, (memOffset + 3), arraySize));
 			
-
-			       // program.Add(new Instruction("", "AddStk " + arraySize));
+		// Reserve the required amount of space to store the array in memory by storing a 0 in each memory address and
+		// incrementing the memory offset(which always points to the next available memory address).
 
   
 				for(int i = 0; i < n; i++){
 				   program.Add(new Instruction("", "Const " + 0));
-			          program.Add(new Instruction("", "StoG " + (memOffset + 3)));
+			           program.Add(new Instruction("", "StoG " + (memOffset + 3)));
 				   memOffset ++;	
 				
 				}
