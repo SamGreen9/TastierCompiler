@@ -748,7 +748,7 @@ Stat                            (.  TastierType type, type2; int exprVal, arrayI
   
     ')''{'   		        (.  
                                   
-				   string switchBreak = generateLabel();
+				   string switchCases = generateLabel();
                                     openLabels.Push(generateLabel());
 
 				.)
@@ -762,16 +762,21 @@ Stat                            (.  TastierType type, type2; int exprVal, arrayI
 				   program.Add(new Instruction("", "Equ"));
                                    program.Add(new Instruction("", "FJmp " + openLabels.Peek()));
                                 .)
+    
+    
     Stat 
-//    ["break"                  
-				  (.
-                                    program.Add(new Instruction("", "Jmp " + switchBreak));
+    ["break"                   
+				(.
+                                    program.Add(new Instruction("", "Jmp " + switchCases));
                                 .)
-  //  ';'
-   // 
-   				(. 
+    ';' 
+    
+    ]
+    				(.
                                     program.Add(new Instruction(openLabels.Pop(), "Nop"));
-                                .)               
+                                .)
+    
+    
 
   {
     "case"                      
@@ -787,13 +792,13 @@ Stat                            (.  TastierType type, type2; int exprVal, arrayI
 				    program.Add(new Instruction("", "FJmp " + openLabels.Peek()));
                                 .)
     Stat 
-//    ["break"                   
+    ["break"                   
 				(.
-                                    program.Add(new Instruction("", "Jmp " + switchBreak));
+                                    program.Add(new Instruction("", "Jmp " + switchCases));
                                 .)
-  //  ';' 
+    ';' 
     
-   // ]
+    ]
     				(.
                                     program.Add(new Instruction(openLabels.Pop(), "Nop"));
                                 .)
@@ -801,18 +806,18 @@ Stat                            (.  TastierType type, type2; int exprVal, arrayI
 
 
 
-//  [
-//    "default" ':'
-//    Stat 
-//    ["break"                    (.
-//                                    program.Add(new Instruction("", "Jmp " + switchBreak));
-//                                .)
-//    ';'
-//    ]                                       
-//  ]
+  [
+    "default" ':'
+    Stat 
+    	                        (.
+                                    program.Add(new Instruction("", "Jmp " + switchCases));
+                                .)
+    
+                                           
+  ]
  
     '}'                         (.
-                                    program.Add(new Instruction(switchBreak, "Nop"));
+                                    program.Add(new Instruction(switchCases, "Nop"));
                                 .)
 
 
